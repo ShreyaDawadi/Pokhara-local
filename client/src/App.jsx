@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import AddListingForm from './AddListingForm';
 
 function App() {
   const [listings, setListings] = useState([]);
@@ -9,7 +10,7 @@ function App() {
 
   const categories = ['Electrician', 'Tutor', 'Mechanic', 'Rental'];
 
-  useEffect(() => {
+  const fetchListings = () => {
     const params = new URLSearchParams();
     if (search) params.append('search', search);
     if (category) params.append('category', category);
@@ -26,7 +27,15 @@ function App() {
         setError('Failed to load listings');
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchListings();
   }, [search, category]);
+
+  const handleListingAdded = () => {
+    fetchListings();
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -36,6 +45,8 @@ function App() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-10">
+        <AddListingForm onListingAdded={handleListingAdded} />
+
         <div className="mb-8 space-y-4">
           <input
             type="text"
