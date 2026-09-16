@@ -16,7 +16,7 @@ function App() {
     if (category) params.append('category', category);
 
     setLoading(true);
-    fetch(`http://localhost:3000/api/listings?${params.toString()}`)
+    fetch(`${import.meta.env.VITE_API_URL}/api/listings?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => {
         setListings(data);
