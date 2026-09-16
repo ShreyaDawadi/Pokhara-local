@@ -4,9 +4,18 @@ function App() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('');
+
+  const categories = ['Electrician', 'Tutor', 'Mechanic', 'Rental'];
 
   useEffect(() => {
-    fetch('http://localhost:3000/api/listings')
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (category) params.append('category', category);
+
+    setLoading(true);
+    fetch(`http://localhost:3000/api/listings?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => {
         setListings(data);
@@ -17,10 +26,7 @@ function App() {
         setError('Failed to load listings');
         setLoading(false);
       });
-  }, []);
-
-  if (loading) return <p className="text-center mt-20 text-gray-500">Loading listings...</p>;
-  if (error) return <p className="text-center mt-20 text-red-500">{error}</p>;
+  }, [search, category]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -30,6 +36,45 @@ function App() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-10">
+        <div className="mb-8 space-y-4">
+          <input
+            type="text"
+            placeholder="Search listings..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setCategory('')}
+              className={`px-4 py-1 rounded-full text-sm font-medium ${
+                category === '' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+              }`}
+            >
+              All
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setCategory(cat)}
+                className={`px-4 py-1 rounded-full text-sm font-medium ${
+                  category === cat ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {loading && <p className="text-center text-gray-500">Loading listings...</p>}
+        {error && <p className="text-center text-red-500">{error}</p>}
+
+        {!loading && !error && listings.length === 0 && (
+          <p className="text-center text-gray-500">No listings found.</p>
+        )}
+
         <div className="grid gap-6 sm:grid-cols-2">
           {listings.map((listing) => (
             <div

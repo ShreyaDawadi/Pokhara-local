@@ -12,8 +12,25 @@ app.get('/', (req, res) => {
 });
 
 app.get('/api/listings', async (req, res) => {
+  const { search, category } = req.query;
+
+  let query = 'SELECT * FROM listings WHERE 1=1';
+  const params = [];
+
+  if (search) {
+    params.push(`%${search}%`);
+    query += ` AND (title ILIKE $${params.length} OR description ILIKE $${params.length})`;
+  }
+
+  if (category) {
+    params.push(category);
+    query += ` AND category = $${params.length}`;
+  }
+
+  query += ' ORDER BY created_at DESC';
+
   try {
-    const result = await pool.query('SELECT * FROM listings ORDER BY created_at DESC');
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {
     console.error(err);
