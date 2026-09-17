@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import AddListingForm from './AddListingForm';
+import AuthForm from './AuthForm';
+import { useAuth } from './AuthContext';
 
 function App() {
+  const { user, token, logout } = useAuth();
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [editingListing, setEditingListing] = useState(null);
+  const [showAuthForm, setShowAuthForm] = useState(false);
 
   const categories = ['Electrician', 'Tutor', 'Mechanic', 'Rental'];
 
@@ -51,6 +55,7 @@ function App() {
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/listings/${id}`, {
         method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!res.ok) throw new Error('Failed to delete');
@@ -64,17 +69,48 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-blue-600 text-white py-10 px-4 text-center">
+      <header className="bg-blue-600 text-white py-10 px-4 text-center relative">
+        <div className="absolute top-4 right-4">
+          {user ? (
+            <div className="flex items-center gap-3 text-sm">
+              <span>Hi, {user.name}</span>
+              <button
+                onClick={logout}
+                className="bg-blue-700 px-3 py-1 rounded-lg hover:bg-blue-800"
+              >
+                Log Out
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowAuthForm(true)}
+              className="bg-white text-blue-600 px-4 py-1 rounded-lg text-sm font-medium hover:bg-blue-50"
+            >
+              Log In / Sign Up
+            </button>
+          )}
+        </div>
+
         <h1 className="text-4xl font-bold">Pokhara Local</h1>
         <p className="mt-2 text-blue-100">Discover local businesses and services in Pokhara</p>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-10">
-        <AddListingForm
-          onListingAdded={handleListingSaved}
-          editingListing={editingListing}
-          onCancelEdit={() => setEditingListing(null)}
-        />
+        {user ? (
+          <AddListingForm
+            onListingAdded={handleListingSaved}
+            editingListing={editingListing}
+            onCancelEdit={() => setEditingListing(null)}
+            token={token}
+          />
+        ) : (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-8 text-center text-gray-500">
+            <button onClick={() => setShowAuthForm(true)} className="text-blue-600 hover:underline">
+              Log in
+            </button>{' '}
+            to add a new listing
+          </div>
+        )}
 
         <div className="mb-8 space-y-4">
           <input
@@ -131,24 +167,29 @@ function App() {
                 <span>{listing.price_range}</span>
                 <span>{listing.phone}</span>
               </div>
-              <div className="flex gap-2 border-t pt-3">
-                <button
-                  onClick={() => handleEdit(listing)}
-                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(listing.id)}
-                  className="text-sm text-red-600 hover:text-red-800 font-medium"
-                >
-                  Delete
-                </button>
-              </div>
+
+              {user && user.id === listing.user_id && (
+                <div className="flex gap-2 border-t pt-3">
+                  <button
+                    onClick={() => handleEdit(listing)}
+                    className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(listing.id)}
+                    className="text-sm text-red-600 hover:text-red-800 font-medium"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
       </main>
+
+      {showAuthForm && <AuthForm onClose={() => setShowAuthForm(false)} />}
     </div>
   );
 }

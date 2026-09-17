@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-function AddListingForm({ onListingAdded, editingListing, onCancelEdit }) {
+function AddListingForm({ onListingAdded, editingListing, onCancelEdit, token }) {
   const [formData, setFormData] = useState({
     title: '',
     category: '',
@@ -53,11 +53,13 @@ function AddListingForm({ onListingAdded, editingListing, onCancelEdit }) {
 
     try {
       const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
+  method,
+  headers: {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+  },
+  body: JSON.stringify(formData),
+});
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Failed to save listing');
