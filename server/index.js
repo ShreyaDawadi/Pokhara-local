@@ -1,9 +1,11 @@
 require('dotenv').config();
+
 const express = require('express');
 const pool = require('./db');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const requireAuth = require('./middleware');
 
 const app = express();
 app.use(express.json());
@@ -13,6 +15,9 @@ const PORT = 3000;
 app.get('/', (req, res) => {
   res.send('Hello from Pokhara Local backend!');
 });
+
+// ---------- AUTH ROUTES ----------
+
 app.post('/api/signup', async (req, res) => {
   const { name, email, password } = req.body;
 
@@ -72,6 +77,8 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// ---------- LISTINGS ROUTES ----------
+
 app.get('/api/listings', async (req, res) => {
   const { search, category } = req.query;
 
@@ -116,7 +123,7 @@ app.get('/api/listings/:id', async (req, res) => {
   }
 });
 
-app.post('/api/listings', async (req, res) => {
+app.post('/api/listings', requireAuth, async (req, res) => {
   const { title, category, description, location, price_range, phone } = req.body;
 
   if (!title || !category) {
@@ -125,10 +132,10 @@ app.post('/api/listings', async (req, res) => {
 
   try {
     const result = await pool.query(
-      `INSERT INTO listings (title, category, description, location, price_range, phone)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO listings (title, category, description, location, price_range, phone, user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [title, category, description, location, price_range, phone]
+      [title, category, description, location, price_range, phone, req.userId]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -136,7 +143,8 @@ app.post('/api/listings', async (req, res) => {
     res.status(500).json({ error: 'Failed to create listing' });
   }
 });
-app.put('/api/listings/:id', async (req, res) => {
+
+app.put('/api/listings/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   const { title, category, description, location, price_range, phone } = req.body;
 
@@ -145,6 +153,16 @@ app.put('/api/listings/:id', async (req, res) => {
   }
 
   try {
+    const existing = await pool.query('SELECT user_id FROM listings WHERE id = $1', [id]);
+
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Listing not found' });
+    }
+
+    if (existing.rows[0].user_id !== req.userId) {
+      return res.status(403).json({ error: 'You can only edit your own listings' });
+    }
+
     const result = await pool.query(
       `UPDATE listings
        SET title = $1, category = $2, description = $3, location = $4, price_range = $5, phone = $6
@@ -153,10 +171,6 @@ app.put('/api/listings/:id', async (req, res) => {
       [title, category, description, location, price_range, phone, id]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Listing not found' });
-    }
-
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
@@ -164,22 +178,28 @@ app.put('/api/listings/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/listings/:id', async (req, res) => {
+app.delete('/api/listings/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
 
   try {
-    const result = await pool.query('DELETE FROM listings WHERE id = $1 RETURNING *', [id]);
+    const existing = await pool.query('SELECT user_id FROM listings WHERE id = $1', [id]);
 
-    if (result.rows.length === 0) {
+    if (existing.rows.length === 0) {
       return res.status(404).json({ error: 'Listing not found' });
     }
 
+    if (existing.rows[0].user_id !== req.userId) {
+      return res.status(403).json({ error: 'You can only delete your own listings' });
+    }
+
+    const result = await pool.query('DELETE FROM listings WHERE id = $1 RETURNING *', [id]);
     res.json({ message: 'Listing deleted', listing: result.rows[0] });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to delete listing' });
   }
 });
+
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
