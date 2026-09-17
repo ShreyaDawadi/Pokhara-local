@@ -76,7 +76,50 @@ app.post('/api/listings', async (req, res) => {
     res.status(500).json({ error: 'Failed to create listing' });
   }
 });
+app.put('/api/listings/:id', async (req, res) => {
+  const { id } = req.params;
+  const { title, category, description, location, price_range, phone } = req.body;
 
+  if (!title || !category) {
+    return res.status(400).json({ error: 'Title and category are required' });
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE listings
+       SET title = $1, category = $2, description = $3, location = $4, price_range = $5, phone = $6
+       WHERE id = $7
+       RETURNING *`,
+      [title, category, description, location, price_range, phone, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Listing not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update listing' });
+  }
+});
+
+app.delete('/api/listings/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query('DELETE FROM listings WHERE id = $1 RETURNING *', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Listing not found' });
+    }
+
+    res.json({ message: 'Listing deleted', listing: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete listing' });
+  }
+});
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
