@@ -1,4 +1,6 @@
 # Pokhara Local
+## 🔗 Live Demo
+[pokhara-local.vercel.app](https://pokhara-local.vercel.app)
 
 A full-stack web app for discovering local businesses and services in Pokhara, Nepal — electricians, tutors, mechanics, and more.
 
