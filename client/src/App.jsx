@@ -7,6 +7,7 @@ function App() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
+  const [editingListing, setEditingListing] = useState(null);
 
   const categories = ['Electrician', 'Tutor', 'Mechanic', 'Rental'];
 
@@ -33,8 +34,32 @@ function App() {
     fetchListings();
   }, [search, category]);
 
-  const handleListingAdded = () => {
+  const handleListingSaved = () => {
+    setEditingListing(null);
     fetchListings();
+  };
+
+  const handleEdit = (listing) => {
+    setEditingListing(listing);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = async (id) => {
+    const confirmed = window.confirm('Are you sure you want to delete this listing?');
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/listings/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) throw new Error('Failed to delete');
+
+      fetchListings();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete listing');
+    }
   };
 
   return (
@@ -45,7 +70,11 @@ function App() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-10">
-        <AddListingForm onListingAdded={handleListingAdded} />
+        <AddListingForm
+          onListingAdded={handleListingSaved}
+          editingListing={editingListing}
+          onCancelEdit={() => setEditingListing(null)}
+        />
 
         <div className="mb-8 space-y-4">
           <input
@@ -98,9 +127,23 @@ function App() {
               <h2 className="text-xl font-semibold text-gray-800">{listing.title}</h2>
               <p className="text-sm text-gray-500 mb-2">{listing.location}</p>
               <p className="text-gray-600 mb-3">{listing.description}</p>
-              <div className="flex justify-between text-sm text-gray-700 border-t pt-3">
+              <div className="flex justify-between text-sm text-gray-700 border-t pt-3 mb-3">
                 <span>{listing.price_range}</span>
                 <span>{listing.phone}</span>
+              </div>
+              <div className="flex gap-2 border-t pt-3">
+                <button
+                  onClick={() => handleEdit(listing)}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(listing.id)}
+                  className="text-sm text-red-600 hover:text-red-800 font-medium"
+                >
+                  Delete
+                </button>
               </div>
             </div>
           ))}

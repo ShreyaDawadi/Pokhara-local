@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-function AddListingForm({ onListingAdded }) {
+function AddListingForm({ onListingAdded, editingListing, onCancelEdit }) {
   const [formData, setFormData] = useState({
     title: '',
     category: '',
@@ -12,8 +12,32 @@ function AddListingForm({ onListingAdded }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  useEffect(() => {
+    if (editingListing) {
+      setFormData({
+        title: editingListing.title || '',
+        category: editingListing.category || '',
+        description: editingListing.description || '',
+        location: editingListing.location || '',
+        price_range: editingListing.price_range || '',
+        phone: editingListing.phone || '',
+      });
+    }
+  }, [editingListing]);
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      category: '',
+      description: '',
+      location: '',
+      price_range: '',
+      phone: '',
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -21,29 +45,27 @@ function AddListingForm({ onListingAdded }) {
     setSubmitting(true);
     setError(null);
 
+    const isEditing = Boolean(editingListing);
+    const url = isEditing
+      ? `${import.meta.env.VITE_API_URL}/api/listings/${editingListing.id}`
+      : `${import.meta.env.VITE_API_URL}/api/listings`;
+    const method = isEditing ? 'PUT' : 'POST';
+
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/listings`, {
-        method: 'POST',
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to create listing');
+        throw new Error(data.error || 'Failed to save listing');
       }
 
-      const newListing = await res.json();
-      onListingAdded(newListing);
-
-      setFormData({
-        title: '',
-        category: '',
-        description: '',
-        location: '',
-        price_range: '',
-        phone: '',
-      });
+      const savedListing = await res.json();
+      onListingAdded(savedListing);
+      resetForm();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -53,7 +75,23 @@ function AddListingForm({ onListingAdded }) {
 
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6 mb-8 space-y-4">
-      <h2 className="text-xl font-semibold text-gray-800">Add a New Listing</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold text-gray-800">
+          {editingListing ? 'Edit Listing' : 'Add a New Listing'}
+        </h2>
+        {editingListing && (
+          <button
+            type="button"
+            onClick={() => {
+              resetForm();
+              onCancelEdit();
+            }}
+            className="text-sm text-gray-500 hover:text-gray-700"
+          >
+            Cancel
+          </button>
+        )}
+      </div>
 
       {error && <p className="text-red-500 text-sm">{error}</p>}
 
@@ -118,7 +156,7 @@ function AddListingForm({ onListingAdded }) {
         disabled={submitting}
         className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
       >
-        {submitting ? 'Adding...' : 'Add Listing'}
+        {submitting ? 'Saving...' : editingListing ? 'Update Listing' : 'Add Listing'}
       </button>
     </form>
   );
